@@ -1,10 +1,13 @@
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
 from controller.verification_controller import verification_api
 from fastapi.middleware.cors import CORSMiddleware
 from metadata import tags_metadata
 
+import uvicorn
+from controller.verification_controller import socket_app
 
+        
 def create_fastapi_app() -> FastAPI:
 
     app: FastAPI = FastAPI(
@@ -33,13 +36,7 @@ def create_fastapi_app() -> FastAPI:
         return "Hello This Klarity Backend"
 
 
-    @app.websocket("/ws")
-    async def websocket_endpoint(websocket: WebSocket):
-        await websocket.accept()
-        while True:
-            data = await websocket.receive_text()
-            await websocket.send_text(f"Message text was: {data}")
-
+  
     app.include_router(verification_api, prefix="/api/v1",tags=["verification"])
 
     return app
@@ -47,3 +44,13 @@ def create_fastapi_app() -> FastAPI:
 
 
 app = create_fastapi_app()
+    
+# socket_manager = SocketManager(app=app)
+if  __name__ == "__main__":
+ 
+    kwargs = {"host": "0.0.0.0", "port": 5000}
+    kwargs.update({"debug": True, "reload": True})
+    uvicorn.run("main:app", **kwargs)
+
+
+    

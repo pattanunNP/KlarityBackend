@@ -7,10 +7,11 @@ class MilvusConnector(metaclass=Singleton):
     ENV = MilvusConfig()
 
     milvus = connections.connect(
-        alias=ENV.MILVUS_ALAIS,
-        host=ENV.MILVUS_HOST,
-        port=ENV.MILVUS_PORT
+        alias="default", 
+        host='localhost', 
+        port='19530'
     )
+
 
     @classmethod
     def connect(cls):

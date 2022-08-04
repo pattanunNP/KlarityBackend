@@ -7,6 +7,11 @@ from utils.facedetection import FaceEmbredding
 from PIL import Image
 import numpy as np
 import io
+from fastapi import (
+ 
+    HTTPException,
+
+)
 
 
 class Verification:
@@ -42,21 +47,49 @@ class Verification:
             print("Get Error")
 
     def register_face(self, face_image):
-        image = np.asarray(Image.open(io.BytesIO(face_image)))
+        image = Image.open(io.BytesIO(face_image))
         
-        aligned_face,_ = self.FaceEmbredding.detect_faces(image)
+        aligned_face = self.FaceEmbredding.detect_faces(image)
         result = self.FaceEmbredding.get_feature(aligned=aligned_face)
-        
-        
+        print(result)
+        uuid = str(uuid4())
+        data = [
+            [uuid],
+            [result[0].cpu().detach().numpy()]
+        ]
+        print(data)
+        try:
 
+            self.faceRepository.save(data)
+        except:
+            raise HTTPException(status_code=400,detail="Register Face Error")
+        
+        
 
     def face_recognition(self,query_face):
-        image = np.asarray(Image.open(io.BytesIO(query_face)))
+        image = Image.open(io.BytesIO(query_face))
         
-        aligned_face,_ = self.FaceEmbredding.detect_faces(image)
-        result = self.FaceEmbredding.get_feature(aligned=aligned_face)
+        aligned_face = self.FaceEmbredding.detect_faces(image)
+        embedding = self.FaceEmbredding.get_feature(aligned=aligned_face)
+
+
+        res = self.faceRepository.search(embedding.cpu().detach().numpy())
+        print(res[0][0].distance, res[0][0].id)
         
         
-        print(result[0].shape)
+
+        if float(res[0][0].distance) <= 0.8:
+            return {
+                "distance":res[0][0].distance,
+                "match":res[0][0].id
+            }
+        else:
+            raise HTTPException(status_code=404,detail="Not Match")
+     
+        
+        
+        
+        
+        
         
         

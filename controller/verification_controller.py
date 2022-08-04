@@ -6,7 +6,7 @@ from fastapi import (
     HTTPException,
     File
 )
-
+import socketio
 from service.verification import Verification
 from datetime import datetime
 from domain.model.payload import VerifySessionPayload
@@ -16,6 +16,12 @@ verification_api = APIRouter(
 )
 Verification = Verification()
 
+sio = socketio.AsyncServer(async_mode="asgi")
+socket_app = socketio.ASGIApp(sio)
+
+@sio.event
+def connect(sid, environ, auth):
+    print('connect ', sid)
 
 @verification_api.get("/generate")
 async def generate_session():
@@ -50,7 +56,9 @@ async def verify_session(data: VerifySessionPayload):
 
     * Verify Token.
     """
-    session = Verification.verify_session_code(session_code=data.session_token)
+    token = data.session_token
+    session = Verification.verify_session_code(session_code=token)
+    
     if not session:
         return {
             "status": "Invalid or Expired token",
@@ -59,6 +67,7 @@ async def verify_session(data: VerifySessionPayload):
         return {
             "status": "Verified",
         }
+        sio.emit(f'{token}',"Verify complete")
 
 
 @verification_api.post("/verify-exist")
@@ -78,5 +87,32 @@ async def verify_exist(
         raise HTTPException(status_code=400, detail="No file submit")
     else:
         query = await file.read()
-        Verification.face_recognition(query_face=query)
-        return {"filename": file.filename}
+        res = Verification.face_recognition(query_face=query)
+        return res
+        
+
+
+@verification_api.post("/register-face")
+async def register_face(
+        file: UploadFile=File(...),
+):
+    """
+    Verify is exist Face Data in DB.
+
+    in-memory database:
+
+    * Receive face image convert to embedding vector.
+    * Check is exist face data in DB.
+    """
+     
+    if not file :
+        raise HTTPException(status_code=400, detail="No file submit")
+    else:
+        query = await file.read()
+        try:
+            Verification.register_face(query)
+            return {
+                "message":"face registed"
+            }
+        except:
+            raise HTTPException(status_code=503, detail="Error Register")
